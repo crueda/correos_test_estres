@@ -13,6 +13,7 @@ import csv
 import threading
 import time
 import datetime
+import MySQLdb as mdb
 
 import logging, logging.handlers
 
@@ -27,7 +28,7 @@ s = None
 from configobj import ConfigObj
 config = ConfigObj('./estres_query.properties')
 
-LOG = config['directory_logs'] + "/estres_query.log"
+LOG_FILE = config['directory_logs'] + "/estres_query.log"
 LOG_FOR_ROTATE = 10
 
 DB_FRONTEND_IP = config['mysql_host']
@@ -43,14 +44,14 @@ PID = "/var/run/estres_query/estres_query"
 # definimos los logs internos que usaremos para comprobar errores
 try:
     logger = logging.getLogger('estres_query')
-    loggerHandler = logging.handlers.TimedRotatingFileHandler(LOG_FOLDER, 'midnight', 1, backupCount=10)
+    loggerHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, 'midnight', 1, backupCount=10)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     loggerHandler.setFormatter(formatter)
     logger.addHandler(loggerHandler)
     logger.setLevel(logging.DEBUG)
 except:
     print '------------------------------------------------------------------'
-    print '[ERROR] Error writing log at %s' % LOG_FOLDER 
+    print '[ERROR] Error writing log at %s' % LOG_FILE 
     print '[ERROR] Please verify path folder exits and write permissions'
     print '------------------------------------------------------------------'
     exit()
@@ -90,6 +91,8 @@ class MiThread(threading.Thread):
         car = self.num
         print "Arrancando hilo", car
         
+        con = None
+
         # calcular coordenadas
 
 
@@ -107,6 +110,13 @@ class MiThread(threading.Thread):
                 distancia = row[1]
                 logger.debug("Distancia: " + distancia)
 
+        except mdb.Error, e:
+            logger.error ("Error %d: %s" % (e.args[0], e.args[1]))
+            #sys.exit(1)
+
+        finally:
+            if con:
+                con.close()
 
 ########################################################################
 
@@ -128,7 +138,7 @@ consultas = sys.argv[1]
 print ('Lanzando consultas')
 
 #for i in range(1, 151):  
-for i in range(1, consultas): 
+for i in range(1, int(consultas)): 
     time.sleep(0.1) 
     t = MiThread(i)  
     t.start()  
